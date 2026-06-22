@@ -28,7 +28,7 @@ Apex (trigger, handler class, test class), SOQL, the standard Salesforce Account
 
 The unit test passes with zero failures and 100% code coverage (trigger 1 of 1, handler 5 of 5), past the 75% deployment threshold.
 
-TODO (Andre): add a screenshot of the green test run from the Developer Console.
+![100% code coverage in the Developer Console](docs/test-coverage.png)
 
 ## Repository structure
 
@@ -36,11 +36,19 @@ The Apex files live under force-app/main/default/. The trigger is at triggers/Ac
 
 ## Design notes and next iteration
 
-This began as a learning exercise. The current rule (writing a placeholder string to Description when Industry is blank) is not a realistic business requirement; it is a known limitation, kept here honestly. Planned improvements: replace the hardcoded string with a meaningful, configurable value; re-base the rule on a real-world need (flag or default a field rather than overwrite a free-text field); and add the Salesforce metadata files (cls-meta.xml and trigger-meta.xml) so the project deploys cleanly via SFDX.
+This began as a learning exercise. The current rule (writing a fixed string to Description when Industry is blank) is not a realistic business requirement; it is a known limitation, kept here honestly. Planned improvements: replace the hardcoded string with a configurable value, and re-base the rule on a real-world need (flag or default a field rather than overwrite a free-text field). The Salesforce metadata files (.cls-meta.xml and .trigger-meta.xml) are now included, so the project deploys cleanly via SFDX.
 
 ## What I learned
 
-TODO (Andre): in your own words. Trigger.new, the handler pattern, bulkification, Test.startTest and Test.stopTest, and Arrange-Act-Assert.
+This small trigger taught me more than its size suggests:
+
+- **`Trigger.new` and before-save context:** a trigger doesn't query the records it works on — Salesforce hands them to me in `Trigger.new`. Because I used a *before* trigger, I could set the `Description` field directly on those records and Salesforce saves it automatically, with no extra DML or SOQL.
+- **Bulkification:** Salesforce can pass up to 200 records to a trigger at once, so I wrote the logic as a loop over the collection with no SOQL or DML inside it. It behaves the same for 1 record or 200 and never hits governor limits.
+- **Handler pattern:** I kept the trigger as a thin dispatcher and moved the logic into a separate handler class with a static method that takes a `List<Account>`. That makes the logic reusable and, above all, testable on its own — I can pass it a list I build in a test, without needing a real DML.
+- **Testing:** I wrote a unit test using Arrange-Act-Assert (set up data, run the action, check the result). `Test.startTest()/stopTest()` give the tested code a fresh set of governor limits, and `Assert.areEqual` confirms the blank-Industry account got the description while the filled one was left untouched — reaching 100% coverage (Salesforce needs 75% to deploy).
+- **Real Apex gotchas I hit:** Apex only accepts single quotes for strings; an empty field is `null`, not the text `'no value'`; and a long-text field like `Description` can't be filtered in a SOQL `WHERE`.
+
+I also set up this repository myself with Git — clone, stage, commit, push from the command line — and added the Salesforce metadata files so it deploys via SFDX.
 
 ---
 
